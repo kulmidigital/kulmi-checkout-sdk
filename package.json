@@ -1,0 +1,38 @@
+{
+  "name": "kulmi-checkout-sdk",
+  "version": "1.0.0",
+  "description": "Plugin for Kulmi Checkout integration",
+  "keywords": [
+    "kulmipay",
+    "inline",
+    "checkout",
+    "sdk"
+  ],
+  "homepage": "https://github.com/kulmidigital/kulmi-checkout-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/kulmidigital/kulmi-checkout-sdk/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kulmidigital/kulmi-checkout-sdk.git"
+  },
+  "license": "MIT",
+  "author": "Mugendi Gitonga <mugendigitonga@outlook.com>",
+  "type": "commonjs",
+  "main": "src/index.js",
+  "unpkg": "build/kulmi-inline.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "build": "browserify src/index.js | uglifyjs > build/kulmi-inline.js",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "progressbar.js": "^1.1.0"
+  },
+  "devDependencies": {
+    "browserify": "^17.0.0",
+    "uglify-js": "^3.13.9"
+  }
+}

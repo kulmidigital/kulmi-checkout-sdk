@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width">
+</head>
+
+<body>
+    <button onclick="openPopupCheckout()" data-host="http://kulmipay.com">
+        Pay Now (Popup)
+    </button>
+    <script type="text/javascript" src="../build/kulmi-inline.js"></script>
+    <script>
+
+        function openPopupCheckout() {
+                const kulmiObj = window.KulmiPay({
+                    publicAPIKey: "ISPubKey_test_91ffc81a-8ac4-419e-8008-7091caa8d73f",
+                    redirectURL: "http://kulmipay.com",
+                    live: false
+                })
+                .on("COMPLETE", () => alert("COMPLETE"))
+                .on("FAILED", () => alert("FAILED"))
+                .on("IN-PROGRESS", () => console.log("INPROGRESS ..."))
+
+                kulmiObj.run({
+                    amount: 10,
+                    currency: "KES",
+                    email: "test@gmail.com",
+                    method: "CARD-PAYMENT",
+                    first_name: "FELIX",
+                    last_name: "CHER",
+                    country: "KE",
+                    card_tarrif: "CUSTOMER-PAYS",
+                    mobile_tarrif: "CUSTOMER-PAYS"
+                })
+        }
+    </script>
+</body>
+
+</html>
