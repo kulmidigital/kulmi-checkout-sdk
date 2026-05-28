@@ -1,5 +1,5 @@
 {
-  "name": "kulmi-checkout-sdk",
+  "name": "kulmipay",
   "version": "1.0.0",
   "description": "Plugin for Kulmi Checkout integration",
   "keywords": [
@@ -24,8 +24,14 @@
   "directories": {
     "example": "examples"
   },
+  "files": [
+    "src",
+    "build",
+    "README.md"
+  ],
   "scripts": {
     "build": "browserify src/index.js | uglifyjs > build/kulmi-inline.js",
+    "test": "node --test test/*.test.js",
     "prepare": "npm run build"
   },
   "dependencies": {

@@ -1,5 +1,5 @@
-let agents = require("./agents")
-var ProgressBar = require('progressbar.js/src/main')
+const agents = require("./agents")
+const ProgressBar = require('progressbar.js/src/main')
 
 function bindEvent(element, eventName, eventHandler) {
     if (element.addEventListener) {
@@ -12,9 +12,30 @@ function bindEvent(element, eventName, eventHandler) {
 const VERSION = "4"
 const IFRAME_ID = "KULMI-WEBSDK-POPUP-IFRAME-" + VERSION
 const MODAL_ELEMENT_ID = "KULMI-WEBSDK-MODAL-" + VERSION
+const SANDBOX_API_URL = "https://sandbox.kulmipay.com/api/v1/checkout/"
+const LIVE_API_URL = "https://app.kulmipay.com/api/v1/checkout/"
+const SANDBOX_CHECKOUT_URL = "https://checkout-sandbox.kulmipay.com"
+const LIVE_CHECKOUT_URL = "https://checkout.kulmipay.com"
 
-var KulmiPay = function (obj) {
-    let self = this
+function trimTrailingSlash(value) {
+    return String(value || "").replace(/\/+$/, "")
+}
+
+function checkoutApiURLFromBase(baseURL) {
+    let normalized = trimTrailingSlash(baseURL)
+    if (normalized) {
+        if (normalized.endsWith("/api/v1/checkout") || normalized.endsWith("/checkout")) {
+            return normalized + "/"
+        }
+        if (normalized.endsWith("/api/v1")) {
+            return normalized + "/checkout/"
+        }
+        return normalized + "/api/v1/checkout/"
+    }
+    return ""
+}
+
+const KulmiPay = function (obj) {
     obj = obj || {}
     this._btnElement = Object
     this._dataset = Object
@@ -24,36 +45,39 @@ var KulmiPay = function (obj) {
     this._publicAPIKey = obj.publicAPIKey
     this._redirectURL = obj.redirectURL
     this._live = obj.live || false
+    this._apiBaseURL = obj.apiBaseURL || obj.baseURL
+    this._checkoutAPIURL = obj.checkoutAPIURL || obj.checkoutApiURL
+    this._checkoutBaseURL = obj.checkoutBaseURL || obj.websdkBaseURL || obj.webSDKBaseURL
     this._element = obj.element || "kulmiPayButton"
     this.mode = obj.mode || "popup"
     this.inlineContainer = obj.inlineContainer || "checkoutElement"
 
     this._layout = obj.layout || 'tabs'
-    this._methods = obj.methods || ["card", "mpesa"]
+    this._methods = obj.methods || ["mpesa", "pesalink"]
     this._styles = obj.styles || {
-        componentBackgroundColor: "#F7FAFC",
+        componentBackgroundColor: "#FFF7F0",
         unselectedCardBackgroundColor: "#FFFFFF",
         selectedCardBackgroundColor: "#FFFFFF",
-        selectedBorderColor: "2px solid #056BD5",
-        unselectedBorderColor: "2px solid #A0AEC0",
-        selectedFontColor: "#056BD5",
-        unselectedFontColor: "#333333",
-        selectedCardShadow: "0px 0px 7px rgba(5, 107, 213, 0.5)",
+        selectedBorderColor: "2px solid #F56E0F",
+        unselectedBorderColor: "2px solid #F0EBE6",
+        selectedFontColor: "#F56E0F",
+        unselectedFontColor: "#1A1A2E",
+        selectedCardShadow: "0px 0px 7px rgba(245, 110, 15, 0.25)",
         unselectedCardShadow: "none",
         borderRadius: "10px",
-        inputLabelColor: "#000000",
-        inputTextColor: "#000",
+        inputLabelColor: "#1A1A2E",
+        inputTextColor: "#1A1A2E",
         inputBackgroundColor: "#FFFFFF",
-        inputBorderColor: "#CCCCCC",
+        inputBorderColor: "#F0EBE6",
         inputBorderRadius: "10px",
-        ctaBgColor: "#056BD5",
+        ctaBgColor: "#F56E0F",
         ctaFontColor: "#fff",
         fontFamily: "",
         fontWeight: "light",
     }
 
     this.is_mobile = agents.MobileCheck()
-    this.is_ios = (/iPad|iPhone|iPod/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) && !window.MSStream
+    this.is_ios = (/iPad|iPhone|iPod/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) && !globalThis.MSStream
 
     this._showProcessing = function () {
         let isLoadIdt = document.createElement("isLoadIdt");
@@ -62,7 +86,7 @@ var KulmiPay = function (obj) {
         isLoadIdt.style.left = 0
         isLoadIdt.style.position = "fixed"
         document.body.appendChild(isLoadIdt);
-        var line = new ProgressBar.Line('#isLoadIdt', {
+        const line = new ProgressBar.Line('#isLoadIdt', {
             color: '#666',
             easing: 'easeInOut',
             strokeWidth: 1
@@ -71,70 +95,68 @@ var KulmiPay = function (obj) {
     }
 
     this._hideProcessing = function () {
-        let isLoadIdts = document.querySelectorAll('isLoadIdt');
-        for (let x = 0; x < isLoadIdts.length; x++) {
-            isLoadIdts[x].parentNode.removeChild(isLoadIdts[x]);
+        const isLoadIdts = document.querySelectorAll('isLoadIdt');
+        for (const isLoadIdt of isLoadIdts) {
+            isLoadIdt.remove();
         }
     }
 
     this._createCheckoutRequest = function (payload) {
-        let self = this
+        payload = { ...payload }
         payload.callback_url = this._redirectURL
+        payload.redirect_url = this._redirectURL
         payload.public_key = this._publicAPIKey
-        payload.host = window.location.protocol + "//" + window.location.host
+        payload.host = globalThis.location.protocol + "//" + globalThis.location.host
         payload.is_mobile = this.is_mobile
         payload.is_ios = this.is_ios
         payload.version = this.version
         payload.mode = this.mode
 
         this._showProcessing()
-        var requestURL = "https://sandbox.kulmipay.com/api/v1/checkout/"
-        if (this._live) {
-            requestURL = "https://app.kulmipay.com/api/v1/checkout/"
-        }
+        let requestURL = this._checkoutAPIURL || checkoutApiURLFromBase(this._apiBaseURL)
+        requestURL = requestURL || (this._live ? LIVE_API_URL : SANDBOX_API_URL)
         
         let myRequest = new Request(requestURL, { method: "POST", body: JSON.stringify(payload), headers: { "Content-type": "application/json; charset=UTF-8" } })
         fetch(myRequest)
             .then(response => response.json())
             .then(response => {
-                self._checkoutID = response.id
-                self._signature = response.signature
+                this._checkoutID = response.id
+                this._signature = response.signature
 
-                self._layout = response.layout ? response.layout : self._layout
-                self._methods = response.methods ? response.methods : self._methods
-                self._styles = response.styles ? response.styles : self._styles
+                this._layout = response.layout ? response.layout : this._layout
+                this._methods = response.methods ? response.methods : this._methods
+                this._styles = response.styles ? response.styles : this._styles
 
-                if (self._checkoutID && self._signature) {
-                    self._loadPaymentModal()
+                if (this._checkoutID && this._signature) {
+                    this._loadPaymentModal()
                 } else {
-                    self._hideProcessing()
+                    this._hideProcessing()
                 }
             })
-            .catch(err => {
+            .catch(() => {
                 alert("We experienced a problem while initiating your request. Please consider starting the payment process again. If this issue persist, please contact us at support@kulmipay.com")
-                self._hideProcessing()
+                this._hideProcessing()
             });
     }
 
     this._clearElements = function () {
         let iframe = document.getElementById(IFRAME_ID);
         if (iframe) {
-            iframe.parentNode.removeChild(iframe);
+            iframe.remove();
         }
 
         let modal = document.getElementById(MODAL_ELEMENT_ID);
         if (modal) {
-            modal.parentNode.removeChild(modal);
+            modal.remove();
         }
     }
 
     this._btnElement = document.getElementsByClassName(this._element)
     if (this._btnElement) {
-        for (let i = 0; i < this._btnElement.length; ++i) {
-            let btn = this._btnElement[i]
-            btn.addEventListener('click', function () {
+        for (const btn of this._btnElement) {
+            btn.addEventListener('click', () => {
                 let dataset = btn.dataset
-                self._createCheckoutRequest(dataset)
+                this._createCheckoutRequest(dataset)
             })
         }
     }
@@ -145,18 +167,21 @@ var KulmiPay = function (obj) {
                 if (this.mode === "popup") {
                     this._clearElements()
                     let modalContent = this._prepareModal()
-                    if (!this.is_mobile) {
+                    if (this.is_mobile === false) {
                         this._closeModalIcon(modalContent)
                     }
                     let iframe = this._prepareFrame(modalContent, this._checkoutID, this._signature, this._layout, this._methods, this._styles)
                     return iframe
                 } else if (this.mode === "inline") {
-                    var containerElem = document.getElementById(this.inlineContainer)
+                    const containerElem = document.getElementById(this.inlineContainer)
                     let iframe = this._prepareFrame(containerElem, this._checkoutID, this._signature, this._layout, this._methods, this._styles)
                     return iframe
                 }
             }
         } catch (err) {
+            if (globalThis.console) {
+                globalThis.console.error(err)
+            }
             this._hideProcessing()
         }
     }
@@ -181,34 +206,45 @@ var KulmiPay = function (obj) {
         let modalContent = document.createElement("modal-content")
         if (this.is_mobile) {
             modalContent.style.width = "100%";
-        } else {
-            if (this.mode === "popup") {
-                modalContent.style.width = "380px";
-            }
+        } else if (this.mode === "popup") {
+            modalContent.style.width = "380px";
         }
         modalContent.style.height = "100%";
         modalContent.style.margin = "auto"
         modalContent.style.display = "block"
-        if (!this.is_mobile) {
-            modalContent.style.paddingTop = "20px"
-            modalContent.style.backgroundColor = "transparent"
-        } else {
+        if (this.is_mobile) {
             modalContent.style.paddingTop = "0px"
             modalContent.style.backgroundColor = "#ffffff"
+        } else {
+            modalContent.style.paddingTop = "20px"
+            modalContent.style.backgroundColor = "transparent"
         }
 
         modal.appendChild(modalContent)
         return modalContent
     }
 
+    this._isAllowedCheckoutOrigin = function (origin) {
+        if (origin === SANDBOX_CHECKOUT_URL || origin === LIVE_CHECKOUT_URL) {
+            return true
+        }
+        if (this._checkoutBaseURL) {
+            const checkoutBaseURL = trimTrailingSlash(this._checkoutBaseURL)
+            if (/^[a-z][a-z\d+.-]*:\/\//i.test(checkoutBaseURL)) {
+                return origin === new URL(checkoutBaseURL).origin
+            }
+            return origin === checkoutBaseURL
+        }
+        return false
+    }
+
     this.onClose = function () {
-        let self = this
         if (this.mode === "popup") {
-            bindEvent(window, 'message', function (e) {
-                if (e.origin === "https://checkout-sandbox.kulmipay.com" || e.origin === "https://checkout.kulmipay.com") {
+            bindEvent(globalThis, 'message', e => {
+                if (this._isAllowedCheckoutOrigin(e.origin)) {
                     if (e.data.message) {
                         if (e.data.message.identitier == 'kulmipay-close-modal-cdrtl') {
-                            self.exitPay()
+                            this.exitPay()
                         }
                     }
                 }
@@ -217,7 +253,6 @@ var KulmiPay = function (obj) {
     }
 
     this._closeModalIcon = function (modalContent) {
-        let self = this
         let iconHolder = document.createElement("div")
         let icon = document.createElement("div")
         icon.innerHTML = this._closeIconSVG()
@@ -232,22 +267,32 @@ var KulmiPay = function (obj) {
         iconHolder.appendChild(icon)
         modalContent.appendChild(iconHolder)
 
-        icon.addEventListener('click', function () {
-            self._clearElements()
+        icon.addEventListener('click', () => {
+            this._clearElements()
         })
     }
 
     this._openInNewTab = function(url) {
         try {
-            var newWindow = window.open(url, '_blank');
+            const newWindow = globalThis.open(url, '_blank');
             if (newWindow) {
                 newWindow.focus();
             } else {
-                window.location.href = url;
+                globalThis.location.href = url;
             }
         } catch(err) {
-            window.location.href = url;
+            if (globalThis.console) {
+                globalThis.console.warn(err)
+            }
+            globalThis.location.href = url;
         }
+    }
+
+    this._getCheckoutBaseURL = function () {
+        if (this._checkoutBaseURL) {
+            return trimTrailingSlash(this._checkoutBaseURL)
+        }
+        return this._live ? LIVE_CHECKOUT_URL : SANDBOX_CHECKOUT_URL
     }
 
     this._prepareFrame = function (parentContainer, checkoutID, signature, layout, methods, styles) {
@@ -266,38 +311,31 @@ var KulmiPay = function (obj) {
         }
         let params = new URLSearchParams(payload).toString()
         
-        // Make it work for Google Pay and Apple Pay in IOS
         let ifrm = document.createElement("iframe");
+        let websdk_url = this._getCheckoutBaseURL() + "/?" + params
         if (this.is_ios) {
-            let websdk_url = this._live
-                ? "https://checkout.kulmipay.com/?" + params
-                : "https://checkout-sandbox.kulmipay.com/?" + params
             this._openInNewTab(websdk_url)
-            self._hideProcessing()
+            this._hideProcessing()
             return
         }
 
-        if (this._live) {
-            ifrm.setAttribute("src", "https://checkout.kulmipay.com/?" + params);
-        } else {
-            ifrm.setAttribute("src", "https://checkout-sandbox.kulmipay.com/?" + params);
-        }
+        ifrm.setAttribute("src", websdk_url);
         ifrm.setAttribute("id", IFRAME_ID)
         ifrm.setAttribute("allow", "payment; clipboard-read; clipboard-write;")
         ifrm.setAttribute("sandbox", "allow-scripts allow-popups allow-same-origin allow-forms")
         ifrm.style.width = "100%";
-        if (!this.is_mobile) {
-            ifrm.style.height = "100%";
-        } else {
+        if (this.is_mobile) {
             ifrm.style.height = "100vh";
+        } else {
+            ifrm.style.height = "100%";
         }
         ifrm.style.border = 0;
         ifrm.frameborder = 0;
         ifrm.style.borderRadius = "0.25rem";
 
-        ifrm.scrolling = "no";
-        ifrm.onload = function () {
-            self._hideProcessing()
+        ifrm.style.overflow = "hidden";
+        ifrm.onload = () => {
+            this._hideProcessing()
         }
 
         parentContainer.appendChild(ifrm)
@@ -305,8 +343,8 @@ var KulmiPay = function (obj) {
     }
 
     this._eventListener = function (eventName, callback) {
-        bindEvent(window, 'message', function (e) {
-            if (e.origin === "https://checkout-sandbox.kulmipay.com" || e.origin === "https://checkout.kulmipay.com") {
+        bindEvent(globalThis, 'message', e => {
+            if (this._isAllowedCheckoutOrigin(e.origin)) {
                 if (e.data.message) {
                     if (e.data.message.identitier == 'kulmipay-status-update-cdrtl') {
                         if (e.data.message.state === eventName) {
@@ -348,9 +386,9 @@ var KulmiPay = function (obj) {
     // Define default events
     this.onClose()
     this.on = this._eventListener;
-    if (self._redirectURL) {
+    if (this._redirectURL) {
         this.on("COMPLETE", () => {
-            window.location.href = self._redirectURL
+            globalThis.location.href = this._redirectURL
         })
     }
 
@@ -374,5 +412,5 @@ var KulmiPay = function (obj) {
     return this
 }
 
-window.KulmiPay = KulmiPay;
+globalThis.KulmiPay = KulmiPay;
 module.exports = KulmiPay;

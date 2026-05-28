@@ -1,4 +1,4 @@
-# kulmipay Inline Payment SDK
+# kulmipay Checkout SDK
 
 WebSdk plugin for [Kulmipay Payments Button](https://kulmipay.com). Kulmipay enables you to easily add payments to your website with a few lines of code.
 
@@ -8,12 +8,34 @@ Visit our [sandbox/developers test](https://sandbox.kulmipay.com) for your publi
 
 ## Install locally
 
-    yarn add kulmi-checkout-sdk
-    npm install kulmi-checkout-sdk
+    yarn add kulmipay
+    npm install kulmipay
 
 ### CDN option
 
-- https://unpkg.com/kulmi-checkout-sdk
+- https://unpkg.com/kulmipay
+
+## Configuration
+
+The SDK targets KulmiPay sandbox or live endpoints by default.
+
+    const kulmiObj = new window.KulmiPay({
+        publicAPIKey: "<YOUR-API-KEY>",
+        redirectURL: "<YOUR-REDIRECT-URL>",
+        live: false
+    })
+
+For local or self-hosted backend testing, pass the backend and checkout origins explicitly:
+
+    const kulmiObj = new window.KulmiPay({
+        publicAPIKey: "<YOUR-API-KEY>",
+        redirectURL: "http://localhost:8080/thank-you",
+        apiBaseURL: "http://localhost:8000",
+        checkoutBaseURL: "http://localhost:3000",
+        live: false
+    })
+
+`apiBaseURL` is resolved to `/api/v1/checkout/`. You can also pass `checkoutAPIURL` if you need to provide the full checkout API endpoint.
 
 ## Setup inline mode
 
@@ -23,10 +45,10 @@ Define the container where you want the payment component to appear
 
 Instantiate the checkout element. Include this before closing your body tag
 
-    <script type="text/javascript" src="https://unpkg.com/kulmi-checkout-sdk"></script>
+    <script type="text/javascript" src="https://unpkg.com/kulmipay"></script>
     <script>
         function openInlineCheckout() {
-                const kulmiObj = window.KulmiPay({
+                const kulmiObj = new window.KulmiPay({
                     publicAPIKey: "ISPubKey_test_91ffc81a-8ac4-419e-8008-7091caa8d73f",
                     redirectURL: "http://kulmipay.com",
                     live: false,
@@ -56,7 +78,7 @@ Instantiate the checkout element. Include this before closing your body tag
 
 Include this before closing your body tag
 
-    <script src="https://unpkg.com/kulmi-checkout-sdk"></script>
+    <script src="https://unpkg.com/kulmipay"></script>
     <script>
         let isObj = new window.KulmiPay({
             publicAPIKey: "<YOUR-API-KEY>",

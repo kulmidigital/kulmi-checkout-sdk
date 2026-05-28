@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
+    <title>KulmiPay Popup Checkout Example</title>
     <meta name="viewport" content="width=device-width">
 </head>
 
@@ -13,7 +14,7 @@
     <script>
 
         function openPopupCheckout() {
-                const kulmiObj = window.KulmiPay({
+                const kulmiObj = new globalThis.KulmiPay({
                     publicAPIKey: "ISPubKey_test_91ffc81a-8ac4-419e-8008-7091caa8d73f",
                     redirectURL: "http://kulmipay.com",
                     live: false
@@ -26,12 +27,12 @@
                     amount: 10,
                     currency: "KES",
                     email: "test@gmail.com",
-                    method: "CARD-PAYMENT",
-                    first_name: "FELIX",
-                    last_name: "CHER",
+                    method: "M-PESA",
+                    first_name: "JOHN",
+                    last_name: "DOE",
                     country: "KE",
-                    card_tarrif: "CUSTOMER-PAYS",
-                    mobile_tarrif: "CUSTOMER-PAYS"
+                    mobile_tarrif: "CUSTOMER-PAYS",
+                    bank_tarrif: "CUSTOMER-PAYS"
                 })
         }
     </script>

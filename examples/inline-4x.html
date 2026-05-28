@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
+    <title>KulmiPay Inline Checkout Example</title>
     <meta name="viewport" content="width=device-width">
 </head>
 
@@ -10,7 +11,7 @@
     <script type="text/javascript" src="../build/kulmi-inline.js"></script>
     <script>
         function openInlineCheckout() {
-                const kulmiObj = window.KulmiPay({
+                const kulmiObj = new globalThis.KulmiPay({
                     publicAPIKey: "ISPubKey_test_91ffc81a-8ac4-419e-8008-7091caa8d73f",
                     redirectURL: "http://kulmipay.com",
                     live: false,
