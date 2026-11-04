@@ -183,3 +183,26 @@ test("custom checkout base URL is trusted for checkout status events", () => {
 
     assert.equal(received.tracking_id, "invoice-id")
 })
+
+test("redirect mode sends the customer to the checkout page instead of opening a frame", () => {
+    const KulmiPay = loadSDK()
+    let opened = null
+    globalThis.location.assign = url => { opened = url }
+
+    const sdk = new KulmiPay({ publicAPIKey: "ISPubKey_test_123", checkoutBaseURL: "https://checkout-sandbox.kulmipay.com", mode: "redirect" })
+    sdk.continue({ checkoutID: "abc", signature: "sig" })
+
+    assert.ok(opened.startsWith("https://checkout-sandbox.kulmipay.com/?checkout="))
+    const data = JSON.parse(atob(new URL(opened).searchParams.get("checkout")))
+    assert.equal(data.checkout_id, "abc")
+    assert.equal(data.signature, "sig")
+    assert.equal(globalThis.document.body.children.some(child => child.tagName === "iframe"), false)
+})
+
+test("the pop-up frame declares a colour scheme so it stays transparent on dark mode pages", () => {
+    const KulmiPay = loadSDK()
+    const sdk = new KulmiPay({ publicAPIKey: "ISPubKey_test_123", checkoutBaseURL: "https://checkout.example" })
+    const parent = globalThis.document.createElement("div")
+    const frame = sdk._prepareFrame(parent, "abc", "sig", "tabs", ["mpesa"], {})
+    assert.equal(frame.style.colorScheme, "light")
+})

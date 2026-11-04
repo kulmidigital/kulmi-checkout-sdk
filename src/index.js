@@ -164,7 +164,9 @@ const KulmiPay = function (obj) {
     this._loadPaymentModal = function () {
         try {
             if (this._checkoutID && this._signature) {
-                if (this.mode === "popup") {
+                if (this.mode === "redirect") {
+                    globalThis.location.assign(this._checkoutPageURL(this._checkoutID, this._signature, this._layout, this._methods, this._styles))
+                } else if (this.mode === "popup") {
                     this._clearElements()
                     let modalContent = this._prepareModal()
                     if (this.is_mobile === false) {
@@ -295,7 +297,7 @@ const KulmiPay = function (obj) {
         return this._live ? LIVE_CHECKOUT_URL : SANDBOX_CHECKOUT_URL
     }
 
-    this._prepareFrame = function (parentContainer, checkoutID, signature, layout, methods, styles) {
+    this._checkoutPageURL = function (checkoutID, signature, layout, methods, styles) {
         let data = {
             "checkout_id": checkoutID,
             "signature": signature,
@@ -309,10 +311,12 @@ const KulmiPay = function (obj) {
             "is_mobile": this.is_mobile,
             "is_ios": this.is_ios
         }
-        let params = new URLSearchParams(payload).toString()
-        
+        return this._getCheckoutBaseURL() + "/?" + new URLSearchParams(payload).toString()
+    }
+
+    this._prepareFrame = function (parentContainer, checkoutID, signature, layout, methods, styles) {
         let ifrm = document.createElement("iframe");
-        let websdk_url = this._getCheckoutBaseURL() + "/?" + params
+        let websdk_url = this._checkoutPageURL(checkoutID, signature, layout, methods, styles)
         if (this.is_ios) {
             this._openInNewTab(websdk_url)
             this._hideProcessing()
@@ -329,6 +333,9 @@ const KulmiPay = function (obj) {
         } else {
             ifrm.style.height = "100%";
         }
+        // A frame whose colour scheme differs from its page's is painted opaque: on a page
+        // that follows dark mode, that was a white block behind the checkout card.
+        ifrm.style.colorScheme = "light";
         ifrm.style.border = 0;
         ifrm.frameborder = 0;
         ifrm.style.borderRadius = "0.25rem";

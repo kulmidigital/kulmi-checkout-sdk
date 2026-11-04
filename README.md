@@ -69,6 +69,19 @@ Instantiate the checkout element. Include this before closing your body tag
         openInlineCheckout()
     </script>
 
+## Setup redirect mode
+
+Set `mode: "redirect"` to send the customer to the full Kulmi Pay checkout page instead of opening a pop-up. After paying, they return to your `redirectURL`.
+
+```js
+new window.KulmiPay({
+    publicAPIKey: "ISPubKey_live_xxxxxxxx",
+    redirectURL: "https://example.com/thanks",
+    live: true,
+    mode: "redirect"
+})
+```
+
 ## Setup popup mode website
 
     <button class="kulmiPayButton" data-api_ref="payment-link" data-phone-number="254xxxxxxxx"
